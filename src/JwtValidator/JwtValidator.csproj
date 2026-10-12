@@ -2,13 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Description>JWT validation troubleshooting tool</Description>
-    <Copyright>Global Payments Integrated</Copyright>
-    <Authors>Mark Henderson</Authors>
   </PropertyGroup>
 
   <ItemGroup>
