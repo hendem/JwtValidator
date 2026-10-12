@@ -1,0 +1,30 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore JwtValidator.slnx
+
+      - name: Build
+        run: dotnet build JwtValidator.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --solution JwtValidator.slnx --configuration Release --no-build
