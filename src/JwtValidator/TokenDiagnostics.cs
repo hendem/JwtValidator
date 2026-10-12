@@ -7,10 +7,18 @@ using Microsoft.IdentityModel.Tokens;
 namespace JwtValidator;
 
 /// <summary>Writes human-readable details about a token and key set to help explain why validation passes or fails.</summary>
+/// <param name="output">The writer to send the details to.</param>
+/// <param name="now">The current time, used to describe iat, nbf and exp.</param>
+/// <param name="verbose">Whether to also write the decoded header and payload.</param>
 internal sealed class TokenDiagnostics(TextWriter output, DateTimeOffset now, bool verbose)
 {
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
 
+    /// <summary>Parses a token without validating it.</summary>
+    /// <param name="jwt">The token in compact serialization format.</param>
+    /// <param name="token">The parsed token, or null if it couldn't be parsed.</param>
+    /// <param name="error">Why the token couldn't be parsed, or null if it was parsed.</param>
+    /// <returns>True if the token was parsed.</returns>
     public static bool TryRead(string jwt, out JsonWebToken? token, out string? error)
     {
         try
@@ -27,9 +35,14 @@ internal sealed class TokenDiagnostics(TextWriter output, DateTimeOffset now, bo
         }
     }
 
-    /// <summary>Gets the token's kid, or null if it has none (JsonWebToken returns an empty string in that case).</summary>
+    /// <summary>Gets the token's kid.</summary>
+    /// <param name="token">The parsed token.</param>
+    /// <returns>The kid, or null if it has none (JsonWebToken returns an empty string in that case).</returns>
     public static string? GetKid(JsonWebToken token) => string.IsNullOrEmpty(token.Kid) ? null : token.Kid;
 
+    /// <summary>Writes the token's header fields and registered claims, with iat, nbf and exp as readable dates.</summary>
+    /// <param name="token">The parsed token.</param>
+    /// <param name="settings">The validation settings, used to note when an expired token won't be rejected.</param>
     public void WriteToken(JsonWebToken token, ValidationSettings settings)
     {
         output.WriteLine("Token");
@@ -69,6 +82,9 @@ internal sealed class TokenDiagnostics(TextWriter output, DateTimeOffset now, bo
         }
     }
 
+    /// <summary>Writes the entries in the key set and warns about unusable keys or a kid that isn't in the set.</summary>
+    /// <param name="keySet">The loaded key set.</param>
+    /// <param name="tokenKid">The token's kid, or null if it has none.</param>
     public void WriteKeys(KeySet keySet, string? tokenKid)
     {
         output.WriteLine($"Keys ({keySet.Source})");
@@ -95,6 +111,9 @@ internal sealed class TokenDiagnostics(TextWriter output, DateTimeOffset now, bo
         }
     }
 
+    /// <summary>Describes a time span in its largest whole unit, such as "3 days" or "1 hour".</summary>
+    /// <param name="span">The time span; its sign is ignored.</param>
+    /// <returns>The span as a count and unit.</returns>
     internal static string Humanize(TimeSpan span)
     {
         span = span.Duration();
@@ -107,9 +126,17 @@ internal sealed class TokenDiagnostics(TextWriter output, DateTimeOffset now, bo
         static string Plural(int count, string unit) => count == 1 ? $"1 {unit}" : $"{count} {unit}s";
     }
 
+    /// <summary>Gets a note saying the lifetime isn't enforced, for tokens outside their lifetime.</summary>
+    /// <param name="settings">The validation settings.</param>
+    /// <param name="outsideLifetime">Whether the token is expired or not yet valid.</param>
+    /// <returns>The note, or an empty string if it doesn't apply.</returns>
     private static string LifetimeNote(ValidationSettings settings, bool outsideLifetime) =>
         outsideLifetime && !settings.ValidateLifetime ? "; not enforced without --validate-lifetime" : string.Empty;
 
+    /// <summary>Reads a NumericDate claim (seconds since the Unix epoch).</summary>
+    /// <param name="token">The parsed token.</param>
+    /// <param name="claim">The claim name, such as exp.</param>
+    /// <returns>The claim as a UTC time, or null if the claim is missing or not a number.</returns>
     private static DateTimeOffset? TryGetTime(JsonWebToken token, string claim)
     {
         if (token.TryGetPayloadValue<long>(claim, out var seconds))
@@ -122,9 +149,15 @@ internal sealed class TokenDiagnostics(TextWriter output, DateTimeOffset now, bo
             : null;
     }
 
+    /// <summary>Formats a time as UTC, for example 2024-02-22 18:45:04Z.</summary>
+    /// <param name="value">The time to format.</param>
+    /// <returns>The formatted time.</returns>
     private static string Format(DateTimeOffset value) =>
         value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss'Z'", CultureInfo.InvariantCulture);
 
+    /// <summary>Writes a claim line, skipping claims with no value.</summary>
+    /// <param name="name">The claim name.</param>
+    /// <param name="value">The value to show.</param>
     private void WriteClaim(string name, string? value)
     {
         if (!string.IsNullOrEmpty(value))
@@ -133,6 +166,8 @@ internal sealed class TokenDiagnostics(TextWriter output, DateTimeOffset now, bo
         }
     }
 
+    /// <summary>Decodes a base64url-encoded JSON segment of the token and writes it indented.</summary>
+    /// <param name="encoded">The encoded header or payload.</param>
     private void WriteIndentedJson(string encoded)
     {
         var json = Base64UrlEncoder.Decode(encoded);

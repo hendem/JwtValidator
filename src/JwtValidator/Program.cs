@@ -4,8 +4,12 @@ using Microsoft.IdentityModel.Logging;
 
 namespace JwtValidator;
 
+/// <summary>Entry point for the JwtValidator command-line tool.</summary>
 internal static class Program
 {
+    /// <summary>Parses the command line, runs the validation and returns the process exit code.</summary>
+    /// <param name="args">The command-line arguments.</param>
+    /// <returns>One of the <see cref="ExitCodes"/> values.</returns>
     private static async Task<int> Main(string[] args)
     {
         // This is a local troubleshooting tool, so show the claim values and key ids in validation errors.
@@ -39,6 +43,9 @@ internal static class Program
         return await command.RunAsync(options);
     }
 
+    /// <summary>Writes the generated help text, including any parse errors, to the console.</summary>
+    /// <typeparam name="T">The options type that was parsed.</typeparam>
+    /// <param name="result">The parser result to build the help text from.</param>
     private static void DisplayHelp<T>(ParserResult<T> result)
     {
         var helpText = HelpText.AutoBuild(result, h => h, e => e);

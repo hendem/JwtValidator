@@ -2,6 +2,7 @@ using CommandLine;
 
 namespace JwtValidator;
 
+/// <summary>Command-line options for the tool.</summary>
 internal sealed class Options
 {
     [Option('j', "jwt", HelpText = "The JWT to validate.")]
@@ -40,9 +41,11 @@ internal sealed class Options
     [Option('v', "verbose", Default = false, HelpText = "Set output to verbose messages.")]
     public bool Verbose { get; set; }
 
+    /// <summary>Gets whether any issuer, audience or lifetime check was requested.</summary>
     public bool HasClaimChecks => Issuer is not null || Audience is not null || ValidateLifetime;
 
-    /// <summary>Returns a message describing the first invalid option combination, or null if the options are usable.</summary>
+    /// <summary>Checks that exactly one token source and one key source are set and that the values are usable.</summary>
+    /// <returns>A message describing the first invalid option combination, or null if the options are usable.</returns>
     public string? GetUsageError()
     {
         if (IsSet(Jwt) == IsSet(JwtFile))
@@ -69,8 +72,13 @@ internal sealed class Options
         return null;
     }
 
+    /// <summary>Creates the validation settings that correspond to the claim check options.</summary>
+    /// <returns>The issuer, audience, lifetime and clock skew settings to validate with.</returns>
     public ValidationSettings ToValidationSettings() =>
         new(Issuer, Audience, ValidateLifetime, TimeSpan.FromSeconds(ClockSkewSeconds));
 
+    /// <summary>Determines whether an option value was supplied.</summary>
+    /// <param name="value">The option value.</param>
+    /// <returns>True if the value is not null, empty or whitespace.</returns>
     private static bool IsSet(string? value) => !string.IsNullOrWhiteSpace(value);
 }

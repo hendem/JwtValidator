@@ -3,8 +3,12 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace JwtValidator.Tests;
 
+/// <summary>Tests for <see cref="TokenDiagnostics"/>.</summary>
 public class TokenDiagnosticsTests
 {
+    /// <summary>Time spans are described in their largest whole unit, ignoring the sign.</summary>
+    /// <param name="seconds">The time span in seconds.</param>
+    /// <param name="expected">The expected description.</param>
     [Theory]
     [InlineData(30, "30 seconds")]
     [InlineData(60, "1 minute")]
@@ -16,6 +20,7 @@ public class TokenDiagnosticsTests
         Assert.Equal(expected, TokenDiagnostics.Humanize(TimeSpan.FromSeconds(seconds)));
     }
 
+    /// <summary>The token summary shows the header fields and claims, and notes that expiry isn't enforced by default.</summary>
     [Fact]
     public void WriteToken_ShowsClaimsAndExpiry()
     {
@@ -38,6 +43,7 @@ public class TokenDiagnosticsTests
         Assert.DoesNotContain("Payload:", text);
     }
 
+    /// <summary>Verbose output includes the decoded payload.</summary>
     [Fact]
     public void WriteToken_Verbose_ShowsDecodedPayload()
     {
@@ -51,6 +57,7 @@ public class TokenDiagnosticsTests
         Assert.Contains("\"sub\": \"test-user\"", output.ToString());
     }
 
+    /// <summary>A kid that isn't in the key set produces a warning listing the available kids.</summary>
     [Fact]
     public void WriteKeys_WarnsWhenTheTokenKidIsNotInTheKeySet()
     {
@@ -63,6 +70,7 @@ public class TokenDiagnosticsTests
         Assert.Contains("the token's kid 'missing' is not in the key set (available: a, b)", output.ToString());
     }
 
+    /// <summary>A token without a kid header gives null rather than an empty string.</summary>
     [Fact]
     public void GetKid_ReturnsNullWhenTheHeaderHasNoKid()
     {
@@ -72,6 +80,7 @@ public class TokenDiagnosticsTests
         Assert.Null(TokenDiagnostics.GetKid(new JsonWebToken(jwt)));
     }
 
+    /// <summary>A malformed token can't be read and an error is returned.</summary>
     [Fact]
     public void TryRead_RejectsMalformedTokens()
     {

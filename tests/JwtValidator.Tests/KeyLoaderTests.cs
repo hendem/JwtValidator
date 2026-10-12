@@ -4,8 +4,10 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace JwtValidator.Tests;
 
+/// <summary>Tests for <see cref="KeyLoader"/>.</summary>
 public class KeyLoaderTests
 {
+    /// <summary>Every JWKS entry is described, but only usable signing keys are loaded.</summary>
     [Fact]
     public void FromJwks_DescribesEveryEntry_IncludingOnesThatCannotBeUsed()
     {
@@ -21,18 +23,21 @@ public class KeyLoaderTests
         Assert.Equal("good", key.KeyId);
     }
 
+    /// <summary>JSON without a <c>keys</c> array is rejected.</summary>
     [Fact]
     public void FromJwks_WithoutKeysArray_Throws()
     {
         Assert.Throws<InvalidDataException>(() => KeyLoader.FromJwks("""{"kty":"RSA"}""", "jwks"));
     }
 
+    /// <summary>Text that isn't JSON is rejected.</summary>
     [Fact]
     public void FromJwks_WithInvalidJson_Throws()
     {
         Assert.ThrowsAny<JsonException>(() => KeyLoader.FromJwks("not json", "jwks"));
     }
 
+    /// <summary>Loading a private key PEM keeps only the public key.</summary>
     [Fact]
     public void FromRsaPem_WithPrivateKey_KeepsOnlyThePublicKey()
     {
@@ -45,12 +50,14 @@ public class KeyLoaderTests
         Assert.Equal(rsa.ExportParameters(false).Modulus, key.Parameters.Modulus);
     }
 
+    /// <summary>Text that doesn't contain a PEM key is rejected.</summary>
     [Fact]
     public void FromRsaPem_WithoutPem_Throws()
     {
         Assert.Throws<ArgumentException>(() => KeyLoader.FromRsaPem("not a pem", "pem"));
     }
 
+    /// <summary>Non-RSA keys have no RSA parameters.</summary>
     [Fact]
     public void GetRsaParameters_ReturnsNullForNonRsaKeys()
     {

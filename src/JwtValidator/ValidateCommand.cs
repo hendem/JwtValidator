@@ -3,8 +3,16 @@ using System.Text.Json;
 namespace JwtValidator;
 
 /// <summary>Runs one validation for the given options and returns the process exit code.</summary>
+/// <param name="output">The writer for diagnostics and the result.</param>
+/// <param name="error">The writer for usage and input errors.</param>
+/// <param name="httpClient">The client used to fetch a JWKS from a URL.</param>
+/// <param name="timeProvider">The clock used to describe the token's lifetime.</param>
 internal sealed class ValidateCommand(TextWriter output, TextWriter error, HttpClient httpClient, TimeProvider timeProvider)
 {
+    /// <summary>Reads the token and keys, writes diagnostics, validates the token and writes the result.</summary>
+    /// <param name="options">The options; <see cref="Options.GetUsageError"/> is expected to have returned null.</param>
+    /// <param name="cancellationToken">A token to cancel file reads and the JWKS request.</param>
+    /// <returns>One of the <see cref="ExitCodes"/> values.</returns>
     public async Task<int> RunAsync(Options options, CancellationToken cancellationToken = default)
     {
         string jwt;
@@ -63,6 +71,10 @@ internal sealed class ValidateCommand(TextWriter output, TextWriter error, HttpC
         return ExitCodes.Invalid;
     }
 
+    /// <summary>Gets the token from <see cref="Options.Jwt"/> or reads it from <see cref="Options.JwtFile"/>.</summary>
+    /// <param name="options">The options.</param>
+    /// <param name="cancellationToken">A token to cancel the file read.</param>
+    /// <returns>The token with surrounding whitespace removed.</returns>
     private async Task<string> ReadJwtAsync(Options options, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(options.JwtFile))

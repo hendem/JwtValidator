@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace JwtValidator.Tests;
 
+/// <summary>End-to-end tests for <see cref="ValidateCommand"/>, covering output and exit codes.</summary>
 public sealed class ValidateCommandTests : IDisposable
 {
     private readonly RSA _rsa = TestTokens.NewRsa();
@@ -11,6 +12,7 @@ public sealed class ValidateCommandTests : IDisposable
     private readonly StringWriter _output = new();
     private readonly StringWriter _error = new();
 
+    /// <summary>Disposes the test key and deletes the temporary files.</summary>
     public void Dispose()
     {
         _rsa.Dispose();
@@ -20,6 +22,7 @@ public sealed class ValidateCommandTests : IDisposable
         }
     }
 
+    /// <summary>A token file ending in a newline is read and validates.</summary>
     [Fact]
     public async Task JwtFileWithTrailingNewline_IsValid()
     {
@@ -36,6 +39,7 @@ public sealed class ValidateCommandTests : IDisposable
         Assert.Contains("Result: token is valid", _output.ToString());
     }
 
+    /// <summary>A token validates against a JWKS fetched over HTTP and the result names the signing kid.</summary>
     [Fact]
     public async Task JwksFromUrl_IsValid()
     {
@@ -50,6 +54,7 @@ public sealed class ValidateCommandTests : IDisposable
         Assert.Contains("signature verified with kid 'k1'", _output.ToString());
     }
 
+    /// <summary>An HTTP error from the JWKS URL is a usage error that reports the status code.</summary>
     [Fact]
     public async Task JwksUrlReturningAnError_IsAUsageError()
     {
@@ -62,6 +67,7 @@ public sealed class ValidateCommandTests : IDisposable
         Assert.Contains("404", _error.ToString());
     }
 
+    /// <summary>A token signed with a key that isn't in the JWKS exits with the invalid code.</summary>
     [Fact]
     public async Task TokenSignedWithAnotherKey_IsInvalid()
     {
@@ -75,6 +81,7 @@ public sealed class ValidateCommandTests : IDisposable
         Assert.Contains("Result: token validation failed", _output.ToString());
     }
 
+    /// <summary>An expired token exits as valid by default and as invalid with --validate-lifetime.</summary>
     [Fact]
     public async Task ExpiredToken_FailsOnlyWithValidateLifetime()
     {
@@ -93,6 +100,7 @@ public sealed class ValidateCommandTests : IDisposable
         Assert.Contains(nameof(SecurityTokenExpiredException), _output.ToString());
     }
 
+    /// <summary>Using --manual together with claim checks warns that the claim checks are ignored.</summary>
     [Fact]
     public async Task Manual_WithClaimChecks_WarnsThatTheyAreIgnored()
     {
@@ -111,6 +119,7 @@ public sealed class ValidateCommandTests : IDisposable
         Assert.Contains("--manual checks the signature only", _output.ToString());
     }
 
+    /// <summary>A key file that doesn't exist is a usage error.</summary>
     [Fact]
     public async Task MissingKeyFile_IsAUsageError()
     {
@@ -122,6 +131,7 @@ public sealed class ValidateCommandTests : IDisposable
         Assert.StartsWith("Error:", _error.ToString());
     }
 
+    /// <summary>A malformed token exits with the invalid code and says the format isn't valid.</summary>
     [Fact]
     public async Task MalformedToken_IsInvalid()
     {
@@ -133,6 +143,10 @@ public sealed class ValidateCommandTests : IDisposable
         Assert.Contains("Token format is not valid", _output.ToString());
     }
 
+    /// <summary>Runs the command with the test's output writers.</summary>
+    /// <param name="options">The options to run with.</param>
+    /// <param name="httpClient">The HTTP client to use; by default, one that returns HTTP 500.</param>
+    /// <returns>The exit code.</returns>
     private async Task<int> RunAsync(Options options, HttpClient? httpClient = null)
     {
         using var defaultClient = new HttpClient(new StubHandler(HttpStatusCode.InternalServerError, string.Empty));
@@ -140,6 +154,9 @@ public sealed class ValidateCommandTests : IDisposable
         return await command.RunAsync(options, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Writes text to a temporary file that is deleted when the test finishes.</summary>
+    /// <param name="contents">The file contents.</param>
+    /// <returns>The path of the file.</returns>
     private string WriteTempFile(string contents)
     {
         var path = Path.GetTempFileName();
@@ -148,8 +165,15 @@ public sealed class ValidateCommandTests : IDisposable
         return path;
     }
 
+    /// <summary>An HTTP handler that returns the same response to every request.</summary>
+    /// <param name="statusCode">The response status code.</param>
+    /// <param name="content">The response body.</param>
     private sealed class StubHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler
     {
+        /// <summary>Returns the configured response without sending the request.</summary>
+        /// <param name="request">The request, which is ignored.</param>
+        /// <param name="cancellationToken">Not used.</param>
+        /// <returns>The configured response.</returns>
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(statusCode) { Content = new StringContent(content) });
     }

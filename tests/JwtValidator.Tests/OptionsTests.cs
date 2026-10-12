@@ -1,7 +1,9 @@
 namespace JwtValidator.Tests;
 
+/// <summary>Tests for <see cref="Options"/>.</summary>
 public class OptionsTests
 {
+    /// <summary>One token source and one key source is a valid combination.</summary>
     [Fact]
     public void ValidOptions_HaveNoUsageError()
     {
@@ -10,6 +12,14 @@ public class OptionsTests
         Assert.Null(options.GetUsageError());
     }
 
+    /// <summary>Missing or conflicting sources, a non-HTTP URL and a negative clock skew are usage errors.</summary>
+    /// <param name="jwt">The --jwt value.</param>
+    /// <param name="jwtFile">The --jwt-file value.</param>
+    /// <param name="jwksUrl">The --jwks-url value.</param>
+    /// <param name="jwksFile">The --jwks-file value.</param>
+    /// <param name="rsaKeyFile">The --rsa-key-file value.</param>
+    /// <param name="clockSkew">The --clock-skew value.</param>
+    /// <param name="expectedMessage">Text the usage error must contain.</param>
     [Theory]
     [InlineData(null, null, null, "jwks.json", null, 300, "--jwt or --jwt-file")]
     [InlineData("a.b.c", "token.jwt", null, "jwks.json", null, 300, "--jwt or --jwt-file")]

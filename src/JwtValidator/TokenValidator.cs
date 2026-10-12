@@ -5,17 +5,36 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace JwtValidator;
 
+/// <summary>The optional claim checks to apply in addition to the signature check.</summary>
+/// <param name="Issuer">The required issuer, or null to skip the issuer check.</param>
+/// <param name="Audience">The required audience, or null to skip the audience check.</param>
+/// <param name="ValidateLifetime">Whether to reject expired and not-yet-valid tokens.</param>
+/// <param name="ClockSkew">The clock skew allowed when validating the lifetime.</param>
 internal sealed record ValidationSettings(string? Issuer, string? Audience, bool ValidateLifetime, TimeSpan ClockSkew);
 
+/// <summary>The result of validating a token.</summary>
+/// <param name="IsValid">Whether the token passed validation.</param>
+/// <param name="Error">A one-line description of why validation failed, or null if it passed.</param>
+/// <param name="Exception">The exception that caused the failure, if any.</param>
+/// <param name="SigningKey">The key that verified the signature, if validation passed.</param>
 internal sealed record ValidationOutcome(bool IsValid, string? Error = null, Exception? Exception = null, SecurityKey? SigningKey = null)
 {
+    /// <summary>Creates a successful outcome.</summary>
+    /// <param name="signingKey">The key that verified the signature, if known.</param>
+    /// <returns>A valid outcome.</returns>
     public static ValidationOutcome Valid(SecurityKey? signingKey) => new(true, SigningKey: signingKey);
 
+    /// <summary>Creates a failed outcome.</summary>
+    /// <param name="error">A one-line description of the failure.</param>
+    /// <param name="exception">The exception that caused the failure, if any.</param>
+    /// <returns>An invalid outcome.</returns>
     public static ValidationOutcome Invalid(string error, Exception? exception = null) => new(false, error, exception);
 }
 
+/// <summary>Validates JWT signatures and, optionally, the issuer, audience and lifetime.</summary>
 internal static class TokenValidator
 {
+    /// <summary>The signing algorithms a token may use.</summary>
     public static readonly string[] SupportedAlgorithms =
     [
         SecurityAlgorithms.RsaSha256, SecurityAlgorithms.RsaSha384, SecurityAlgorithms.RsaSha512,
@@ -23,6 +42,10 @@ internal static class TokenValidator
         SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.EcdsaSha384, SecurityAlgorithms.EcdsaSha512,
     ];
 
+    /// <summary>Builds the token handler's validation parameters.</summary>
+    /// <param name="keys">The keys the signature may be verified with.</param>
+    /// <param name="settings">The claim checks to enable.</param>
+    /// <returns>Parameters that require a signed token and enable only the requested claim checks.</returns>
     public static TokenValidationParameters CreateParameters(IEnumerable<SecurityKey> keys, ValidationSettings settings) => new()
     {
         IssuerSigningKeys = keys,
@@ -38,6 +61,11 @@ internal static class TokenValidator
         ClockSkew = settings.ClockSkew,
     };
 
+    /// <summary>Validates a token with <see cref="JsonWebTokenHandler"/>.</summary>
+    /// <param name="jwt">The token in compact serialization format.</param>
+    /// <param name="keys">The keys the signature may be verified with.</param>
+    /// <param name="settings">The claim checks to apply.</param>
+    /// <returns>The validation outcome, including the signing key when the token is valid.</returns>
     public static async Task<ValidationOutcome> ValidateAsync(string jwt, IEnumerable<SecurityKey> keys, ValidationSettings settings)
     {
         var handler = new JsonWebTokenHandler();
@@ -52,6 +80,9 @@ internal static class TokenValidator
     /// Verifies an RSA PKCS#1 signature (RS256/RS384/RS512) directly with System.Security.Cryptography,
     /// independently of the token handler. Claims are not checked.
     /// </summary>
+    /// <param name="token">The parsed token.</param>
+    /// <param name="keys">The keys to try. Keys whose kid matches the token are tried first; non-RSA keys are skipped.</param>
+    /// <returns>The validation outcome, including the signing key when the signature is valid.</returns>
     public static ValidationOutcome ValidateSignatureManually(JsonWebToken token, IEnumerable<SecurityKey> keys)
     {
         HashAlgorithmName? hashAlgorithm = token.Alg switch
@@ -97,7 +128,10 @@ internal static class TokenValidator
         return ValidationOutcome.Invalid("The signature does not match any of the provided RSA keys.");
     }
 
-    // IdentityModel messages are long and multi-line; keep the summary to one line. Verbose output shows the full message.
+    /// <summary>Turns a validation exception into a one-line description.</summary>
+    /// <remarks>IdentityModel messages are long and multi-line, so only a summary is returned. Verbose output shows the full message.</remarks>
+    /// <param name="exception">The exception reported by the token handler.</param>
+    /// <returns>A one-line description of the failure.</returns>
     private static string Describe(Exception? exception) => exception switch
     {
         null => "Unknown validation error.",

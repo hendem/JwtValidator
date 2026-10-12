@@ -4,8 +4,10 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace JwtValidator.Tests;
 
+/// <summary>Tests for <see cref="TokenValidator"/>.</summary>
 public class TokenValidatorTests
 {
+    /// <summary>An RS256 token validates against the matching RSA public key loaded from PEM.</summary>
     [Fact]
     public async Task RsaToken_WithPemKey_IsValid()
     {
@@ -18,6 +20,7 @@ public class TokenValidatorTests
         Assert.True(outcome.IsValid, outcome.Error);
     }
 
+    /// <summary>An RS256 token validates against a JWKS and the outcome reports the signing key's kid.</summary>
     [Fact]
     public async Task RsaToken_WithJwks_IsValid()
     {
@@ -31,8 +34,16 @@ public class TokenValidatorTests
         Assert.Equal("k1", outcome.SigningKey?.KeyId);
     }
 
-    // Regression test: the original implementation imported every JWKS key into one RSA instance,
-    // so only the last RSA key in the set was ever used.
+    /// <summary>
+    /// A JWKS with several RSA keys validates a token signed by any of them, with or without a kid,
+    /// using both the token handler and manual validation.
+    /// </summary>
+    /// <remarks>
+    /// Regression test: the original implementation imported every JWKS key into one RSA instance,
+    /// so only the last RSA key in the set was ever used.
+    /// </remarks>
+    /// <param name="signerIndex">The position of the signing key in the JWKS.</param>
+    /// <param name="tokenHasKid">Whether the token header includes the signing key's kid.</param>
     [Theory]
     [InlineData(0, true)]
     [InlineData(1, true)]
@@ -65,6 +76,7 @@ public class TokenValidatorTests
         }
     }
 
+    /// <summary>The ECDSA algorithms and their matching JWK curve names.</summary>
     public static TheoryData<string, string> EcAlgorithms => new()
     {
         { SecurityAlgorithms.EcdsaSha256, "P-256" },
@@ -72,6 +84,9 @@ public class TokenValidatorTests
         { SecurityAlgorithms.EcdsaSha512, "P-521" },
     };
 
+    /// <summary>ES256, ES384 and ES512 tokens validate against an EC key in a JWKS.</summary>
+    /// <param name="algorithm">The ECDSA signing algorithm.</param>
+    /// <param name="crv">The JWK curve name that goes with the algorithm.</param>
     [Theory]
     [MemberData(nameof(EcAlgorithms))]
     public async Task EcToken_WithJwks_IsValid(string algorithm, string crv)
@@ -91,6 +106,8 @@ public class TokenValidatorTests
         Assert.True(outcome.IsValid, outcome.Error);
     }
 
+    /// <summary>RS384, RS512 and PS256 tokens validate, not only RS256.</summary>
+    /// <param name="algorithm">The RSA signing algorithm.</param>
     [Theory]
     [InlineData(SecurityAlgorithms.RsaSha384)]
     [InlineData(SecurityAlgorithms.RsaSha512)]
@@ -106,6 +123,7 @@ public class TokenValidatorTests
         Assert.True(outcome.IsValid, outcome.Error);
     }
 
+    /// <summary>A token signed with a different key is rejected by both validation paths.</summary>
     [Fact]
     public async Task WrongKey_IsInvalid()
     {
@@ -121,6 +139,7 @@ public class TokenValidatorTests
         Assert.False(manualOutcome.IsValid);
     }
 
+    /// <summary>A token whose payload was changed after signing is rejected by both validation paths.</summary>
     [Fact]
     public async Task TamperedPayload_IsInvalid()
     {
@@ -138,6 +157,7 @@ public class TokenValidatorTests
         Assert.False(manualOutcome.IsValid);
     }
 
+    /// <summary>An unsigned (alg none) token is rejected.</summary>
     [Fact]
     public async Task UnsignedToken_IsInvalid()
     {
@@ -150,6 +170,7 @@ public class TokenValidatorTests
         Assert.False(outcome.IsValid);
     }
 
+    /// <summary>An expired token passes by default and fails with an expiry error when the lifetime is validated.</summary>
     [Fact]
     public async Task ExpiredToken_IsOnlyRejectedWhenLifetimeIsValidated()
     {
@@ -170,6 +191,7 @@ public class TokenValidatorTests
         Assert.IsType<SecurityTokenExpiredException>(withLifetime.Exception);
     }
 
+    /// <summary>A token whose nbf is in the future fails when the lifetime is validated.</summary>
     [Fact]
     public async Task NotYetValidToken_IsRejectedWhenLifetimeIsValidated()
     {
@@ -188,6 +210,7 @@ public class TokenValidatorTests
         Assert.IsType<SecurityTokenNotYetValidException>(outcome.Exception);
     }
 
+    /// <summary>When an issuer is given, a matching issuer passes and a different one fails.</summary>
     [Fact]
     public async Task Issuer_IsCheckedWhenProvided()
     {
@@ -205,6 +228,7 @@ public class TokenValidatorTests
         Assert.IsType<SecurityTokenInvalidIssuerException>(mismatched.Exception);
     }
 
+    /// <summary>When an audience is given, a matching audience passes and a different one fails.</summary>
     [Fact]
     public async Task Audience_IsCheckedWhenProvided()
     {
@@ -222,6 +246,8 @@ public class TokenValidatorTests
         Assert.IsType<SecurityTokenInvalidAudienceException>(mismatched.Exception);
     }
 
+    /// <summary>Manual validation accepts RS256, RS384 and RS512 tokens signed by the key.</summary>
+    /// <param name="algorithm">The RSA PKCS#1 signing algorithm.</param>
     [Theory]
     [InlineData(SecurityAlgorithms.RsaSha256)]
     [InlineData(SecurityAlgorithms.RsaSha384)]
@@ -237,6 +263,7 @@ public class TokenValidatorTests
         Assert.True(outcome.IsValid, outcome.Error);
     }
 
+    /// <summary>Manual validation rejects non-RSA algorithms and names the algorithm in the error.</summary>
     [Fact]
     public void ManualValidation_RejectsUnsupportedAlgorithm()
     {

@@ -14,10 +14,23 @@ internal static class TestTokens
 
     public static readonly ValidationSettings NoClaimChecks = new(null, null, false, TimeSpan.FromMinutes(5));
 
+    /// <summary>Creates a new 2048-bit RSA key pair.</summary>
+    /// <returns>The key pair; the caller disposes it.</returns>
     public static RSA NewRsa() => RSA.Create(2048);
 
+    /// <summary>Creates a new EC key pair on the given curve.</summary>
+    /// <param name="curve">The named curve, such as P-256.</param>
+    /// <returns>The key pair; the caller disposes it.</returns>
     public static ECDsa NewEcdsa(ECCurve curve) => ECDsa.Create(curve);
 
+    /// <summary>Creates a signed token with a <c>sub</c> claim and the given issuer, audience and lifetime.</summary>
+    /// <param name="signingKey">The private key to sign with. Its KeyId, if set, becomes the token's kid.</param>
+    /// <param name="algorithm">The signing algorithm, such as RS256.</param>
+    /// <param name="expires">The exp claim; defaults to one hour from now.</param>
+    /// <param name="notBefore">The nbf and iat claims; default to one minute ago.</param>
+    /// <param name="issuer">The iss claim.</param>
+    /// <param name="audience">The aud claim.</param>
+    /// <returns>The token in compact serialization format.</returns>
     public static string CreateToken(
         SecurityKey signingKey,
         string algorithm,
@@ -40,6 +53,10 @@ internal static class TestTokens
         });
     }
 
+    /// <summary>Creates a JWK for the public part of an RSA key.</summary>
+    /// <param name="rsa">The RSA key.</param>
+    /// <param name="kid">The kid, or null to leave it out.</param>
+    /// <returns>The JWK as JSON.</returns>
     public static string RsaJwk(RSA rsa, string? kid)
     {
         var parameters = rsa.ExportParameters(includePrivateParameters: false);
@@ -53,6 +70,11 @@ internal static class TestTokens
         });
     }
 
+    /// <summary>Creates a JWK for the public part of an EC key.</summary>
+    /// <param name="ecdsa">The EC key.</param>
+    /// <param name="crv">The JWK curve name, such as P-256.</param>
+    /// <param name="kid">The kid, or null to leave it out.</param>
+    /// <returns>The JWK as JSON.</returns>
     public static string EcJwk(ECDsa ecdsa, string crv, string? kid)
     {
         var parameters = ecdsa.ExportParameters(includePrivateParameters: false);
@@ -67,8 +89,14 @@ internal static class TestTokens
         });
     }
 
+    /// <summary>Wraps JWKs in a JWKS document.</summary>
+    /// <param name="jwks">The JWKs as JSON.</param>
+    /// <returns>A JWKS with the JWKs in its <c>keys</c> array.</returns>
     public static string Jwks(params string[] jwks) => $$"""{"keys":[{{string.Join(",", jwks)}}]}""";
 
+    /// <summary>Serializes a JWK, leaving out members with a null value.</summary>
+    /// <param name="jwk">The JWK members.</param>
+    /// <returns>The JWK as JSON.</returns>
     private static string Serialize(Dictionary<string, string?> jwk) =>
         JsonSerializer.Serialize(jwk.Where(p => p.Value is not null).ToDictionary());
 }
