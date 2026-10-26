@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".github/workflows/build.yml" />
+    <File Path="Directory.Build.props" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/JwtValidator/JwtValidator.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/JwtValidator.Tests/JwtValidator.Tests.csproj" />
+  </Folder>
+</Solution>
