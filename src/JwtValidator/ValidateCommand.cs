@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace JwtValidator;
@@ -23,7 +24,8 @@ internal sealed class ValidateCommand(TextWriter output, TextWriter error, HttpC
             keySet = await KeyLoader.LoadAsync(options, httpClient, cancellationToken);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or HttpRequestException
-                                       or TaskCanceledException or ArgumentException or JsonException)
+                                       or TaskCanceledException or ArgumentException or JsonException
+                                       or InvalidDataException or CryptographicException)
         {
             error.WriteLine($"Error: {ex.Message}");
             return ExitCodes.UsageError;

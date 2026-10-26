@@ -131,6 +131,37 @@ public sealed class ValidateCommandTests : IDisposable
         Assert.StartsWith("Error:", _error.ToString());
     }
 
+    /// <summary>A JWKS that isn't an object with a <c>keys</c> array is a usage error, not an unhandled exception.</summary>
+    /// <param name="jwks">The --jwks-json value.</param>
+    [Theory]
+    [InlineData("""{"foo":1}""")]
+    [InlineData("""{"keys":"not-an-array"}""")]
+    [InlineData("[]")]
+    [InlineData("\"just a string\"")]
+    [InlineData("not json")]
+    public async Task MalformedJwks_IsAUsageError(string jwks)
+    {
+        var options = new Options { Jwt = "a.b.c", JwksJson = jwks };
+
+        var exitCode = await RunAsync(options);
+
+        Assert.Equal(ExitCodes.UsageError, exitCode);
+        Assert.StartsWith("Error:", _error.ToString());
+    }
+
+    /// <summary>A PEM file whose key data is corrupt is a usage error, not an unhandled exception.</summary>
+    [Fact]
+    public async Task CorruptPemKey_IsAUsageError()
+    {
+        var corruptPem = "-----BEGIN PUBLIC KEY-----\nAAAAAAAAAAAAAAAA\n-----END PUBLIC KEY-----\n";
+        var options = new Options { Jwt = "a.b.c", RsaKeyFile = WriteTempFile(corruptPem) };
+
+        var exitCode = await RunAsync(options);
+
+        Assert.Equal(ExitCodes.UsageError, exitCode);
+        Assert.StartsWith("Error:", _error.ToString());
+    }
+
     /// <summary>A malformed token exits with the invalid code and says the format isn't valid.</summary>
     [Fact]
     public async Task MalformedToken_IsInvalid()

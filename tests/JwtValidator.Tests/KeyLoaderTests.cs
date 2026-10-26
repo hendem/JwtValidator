@@ -30,6 +30,17 @@ public class KeyLoaderTests
         Assert.Throws<InvalidDataException>(() => KeyLoader.FromJwks("""{"kty":"RSA"}""", "jwks"));
     }
 
+    /// <summary>JSON that isn't an object is rejected with the same error as a missing <c>keys</c> array.</summary>
+    /// <param name="json">The JWKS text.</param>
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("\"just a string\"")]
+    [InlineData("42")]
+    public void FromJwks_WhenRootIsNotAnObject_Throws(string json)
+    {
+        Assert.Throws<InvalidDataException>(() => KeyLoader.FromJwks(json, "jwks"));
+    }
+
     /// <summary>Text that isn't JSON is rejected.</summary>
     [Fact]
     public void FromJwks_WithInvalidJson_Throws()

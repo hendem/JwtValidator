@@ -46,6 +46,7 @@ internal static class KeyLoader
     /// <param name="source">A description of where the key came from, used in the output.</param>
     /// <returns>A key set with a single RSA key.</returns>
     /// <exception cref="ArgumentException">The text doesn't contain a supported PEM-encoded RSA key.</exception>
+    /// <exception cref="CryptographicException">The PEM block is present but its key data is corrupt.</exception>
     public static KeySet FromRsaPem(string pem, string source)
     {
         using var rsa = RSA.Create();
@@ -61,7 +62,7 @@ internal static class KeyLoader
     /// <param name="source">A description of where the JWKS came from, used in the output.</param>
     /// <returns>The usable signing keys plus a description of every entry in the JWKS.</returns>
     /// <exception cref="JsonException">The text isn't valid JSON.</exception>
-    /// <exception cref="InvalidDataException">The JSON has no <c>keys</c> array.</exception>
+    /// <exception cref="InvalidDataException">The JSON isn't an object with a <c>keys</c> array.</exception>
     public static KeySet FromJwks(string json, string source)
     {
         var entries = DescribeJwksEntries(json);
@@ -92,7 +93,9 @@ internal static class KeyLoader
     private static List<KeyDescription> DescribeJwksEntries(string json)
     {
         using var document = JsonDocument.Parse(json);
-        if (!document.RootElement.TryGetProperty("keys", out var keys) || keys.ValueKind != JsonValueKind.Array)
+        if (document.RootElement.ValueKind != JsonValueKind.Object
+            || !document.RootElement.TryGetProperty("keys", out var keys)
+            || keys.ValueKind != JsonValueKind.Array)
         {
             throw new InvalidDataException("The JWKS must be a JSON object with a 'keys' array.");
         }
